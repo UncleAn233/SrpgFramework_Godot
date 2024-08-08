@@ -4,9 +4,9 @@ namespace SrpgFramework.Units
 {
     public partial class Unit
     {
-        public void Highlight(int index, string highlightGroud = CellHighlighter.Group_Default)
+        public void Highlight(int index)
         {
-            this.Cell.Highlight(index, highlightGroud);
+            this.Cell.Highlight(index);
         }
 
         public void DeHighlight()

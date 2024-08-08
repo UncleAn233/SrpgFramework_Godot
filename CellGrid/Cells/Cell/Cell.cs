@@ -3,16 +3,18 @@ using SrpgFramework.Global;
 using SrpgFramework.Units;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace SrpgFramework.CellGrid.Cells
 {
 	public partial class Cell : Node2D
 	{
+        public const string ResourcePath = "res://Resources/Prefabs/cell.tscn";
         /// <summary>
         /// 坐标
         /// </summary>
-        public Vector2I Coord { get; private set; }
+        public Vector2I Coord { get; internal set; }
 
         public GroundType GroundType { get; set; } = GroundType.Ground;
 
@@ -66,13 +68,9 @@ namespace SrpgFramework.CellGrid.Cells
 
         public override void _Ready()
         {
-            this.Coord = new Vector2I((int)((this.Position.X - 8) * 0.125f), (int)((this.Position.Y - 8) * 0.125f));
             var area = this.GetNode<Area2D>("Area2D");
-            area.MouseEntered += OnMouseEnter;
-            area.MouseExited += OnMouseExit;
-            area.InputEvent += OnMouseDown;
-
-            BattleManager.CellGridMgr.RegisterCell(this);
+            area.MouseEntered += MouseEnter;
+            area.InputEvent += MouseDown;
         }
 
         /// <summary>
@@ -152,7 +150,12 @@ namespace SrpgFramework.CellGrid.Cells
             }
             return result;
         }
-    
+
+        public override void _ExitTree()
+        {
+            base._ExitTree();
+            BattleManager.CellGridMgr.UnRegisterCell(this);
+        }
     }
 
     public enum GroundType

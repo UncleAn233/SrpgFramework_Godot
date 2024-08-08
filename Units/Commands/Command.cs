@@ -1,4 +1,5 @@
-﻿using SrpgFramework.CellGrid.CellGridState;
+﻿using Godot;
+using SrpgFramework.CellGrid.CellGridState;
 using SrpgFramework.CellGrid.Cells;
 using SrpgFramework.Global;
 using System;
@@ -6,18 +7,31 @@ using System.Threading.Tasks;
 
 namespace SrpgFramework.Units.Commands
 {
-    public abstract class Command :ICellGridState
+    public abstract partial class Command :Resource, ICellGridState 
     {
-        public abstract Task Act(Unit unit);
+        /// <summary>
+        /// 指令具体效果
+        /// </summary>
+        /// <param name="unit"></param>
+        public abstract void Act(Unit unit);
 
+        /// <summary>
+        /// 执行Act
+        /// </summary>
+        /// <param name="preAction">执行前状态</param>
+        /// <param name="postAction">执行后状态</param>
+        /// <returns></returns>
         public async Task Execute(Unit unit, Action preAction, Action postAction)
         {
             preAction();
-            await Act(unit);
+            Act(unit);
             postAction();
             await Task.Yield();
         }
 
+        /// <summary>
+        /// 人类执行 执行前关闭输入 执行后打开
+        /// </summary>
         public async Task PlayerExecute(Unit unit)
         {
             await Execute(unit,
@@ -25,6 +39,11 @@ namespace SrpgFramework.Units.Commands
                  () => { BattleManager.CellGridMgr.ToIdleState(); });
         }
 
+        /// <summary>
+        /// AI执行 执行完毕后重新评估
+        /// </summary>
+        /// <param name="unit"></param>
+        /// <returns></returns>
         public virtual async Task AIExecute(Unit unit)
         {
             await Execute(unit, () => { },
@@ -43,10 +62,20 @@ namespace SrpgFramework.Units.Commands
         public virtual void OnUnitClicked(Unit self, Unit unit) { }
         public virtual void OnUnitDehighlighted(Unit self, Unit unit) { }
         public virtual void OnUnitHighlighted(Unit self, Unit unit) { }
-        public virtual bool CanPerform(Unit self) { return false; }
+        /// <summary>
+        /// 指令是否可以执行
+        /// </summary>
+        public virtual bool CanAction(Unit self) { return false; }
 
+        
         public bool ShouldExecute(Unit self) { return ShouldExecute(self, self.Cell); }
+        /// <summary>
+        /// 为否时 AI不会考虑执行该指令
+        /// </summary>
         public virtual bool ShouldExecute(Unit unit, Cell cell) { return false; }
+        /// <summary>
+        /// 指令评分
+        /// </summary>
         public virtual float Evaluate(Unit unit) { return -1; }
     }
 }

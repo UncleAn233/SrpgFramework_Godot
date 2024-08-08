@@ -2,11 +2,8 @@
 
 namespace SrpgFramework.CellGrid.Cells
 {
-	public partial class CellHighlighter : AnimatedSprite2D
+    public partial class CellHighlighter : AnimatedSprite2D, ICellHighlighter
     {
-        public const string Group_Default = "default";
-        public const string Group_Path = "path";
-
         public const int Tag_DeHighlight = 0;
         public const int Tag_Cursor = 1;
         public const int Tag_Selectable = 2;
@@ -18,9 +15,8 @@ namespace SrpgFramework.CellGrid.Cells
             cell.OnHighlight += Apply;
         }
 
-        public void Apply(int index, string highlighterGroup)
+        public void Apply(int index)
         {
-            this.Animation = highlighterGroup;
             this.Frame = index;
         }
     }

@@ -1,6 +1,7 @@
 ﻿using Godot;
 using SrpgFramework.CellGrid.CellGridState;
 using SrpgFramework.CellGrid.Cells;
+using SrpgFramework.Global;
 using SrpgFramework.Level;
 using SrpgFramework.Units;
 using System.Collections.Generic;
@@ -26,13 +27,26 @@ namespace SrpgFramework.CellGrid
         /// </summary>
         public ICellGridState SelectUnitState { get; private set; }
 
+        /// <summary>
+        /// 当前选中单位
+        /// </summary>
         private Unit _currentUnit;
+
+        private Cell _highlightCell;
+        
+        /// <summary>
+        /// 存储的tile map节点
+        /// </summary>
+        private TileMap _tileMap;
+
         public override void _Ready()
 		{
             BlockInputState = new GridStateBlockInput();
             IdleState = new GridStateIdle(this);
             SelectUnitState = new GridStateSelectUnit(this);
             CurrentGridState = IdleState;
+
+            BattleManager.LevelMgr.OnLevelLoad += GenerateCellGrid;
         }
 
         public bool ToState(ICellGridState nextState, Unit unit)
@@ -64,12 +78,8 @@ namespace SrpgFramework.CellGrid
         {
             if (Cells.TryAdd(cell.Coord, cell))
             {
-                cell.OnCellClicked += OnCellClicked;
-                cell.OnCellHighlighted += OnCellHighlighted;
-                cell.OnCellDehighlighted += OnCellDehighlighted;
-                cell.OnUnitClicked += OnUnitClicked;
-                cell.OnUnitHighlighted += OnUnitHighlighted;
-                cell.OnUnitDeHighlighted += OnUnitDehighlighted;
+                cell.OnMouseEnter += HighlightCell;
+                cell.OnMouseDown += ClickCell;
             }
         }
 
@@ -77,52 +87,68 @@ namespace SrpgFramework.CellGrid
         {
             if (Cells.Remove(cell.Coord))
             {
-                cell.OnCellClicked -= OnCellClicked;
-                cell.OnCellHighlighted -= OnCellHighlighted;
-                cell.OnCellDehighlighted -= OnCellDehighlighted;
-                cell.OnUnitClicked -= OnUnitClicked;
-                cell.OnUnitHighlighted -= OnUnitHighlighted;
-                cell.OnUnitDeHighlighted -= OnUnitDehighlighted;
+                cell.OnMouseEnter -= HighlightCell;
+                cell.OnMouseDown -= ClickCell;
             }
         }
 
-        private void OnCellDehighlighted(Cell cell)
+        /// <summary>
+        /// 高亮格子 由于Area2D的MouseEntered发生在MouseExited前 因此不分别绑定事件 在这里进行统一的判定调用
+        /// </summary>
+        private void HighlightCell(Cell cell)
         {
-            CurrentGridState.OnCellDehighlighted(_currentUnit, cell);
-        }
-        private void OnCellHighlighted(Cell cell)
-        {
-            CurrentGridState.OnCellHighlighted(_currentUnit, cell);
-        }
-        private void OnCellClicked(Cell cell)
-        {
-            CurrentGridState.OnCellClicked(_currentUnit, cell);
-        }
-        private void OnUnitClicked(Unit unit)
-        {
-            CurrentGridState.OnUnitClicked(_currentUnit, unit);
-        }
-        private void OnUnitHighlighted(Unit unit)
-        {
-            CurrentGridState.OnUnitHighlighted(_currentUnit, unit);
-        }
-        private void OnUnitDehighlighted(Unit unit)
-        {
-            CurrentGridState.OnUnitDehighlighted(_currentUnit, unit);
-        }
-
-        public void GenerateCellGrid(LevelData levelData)
-        {
-            var parent = new Node();
-            parent.Name = "Cells";
-
-            for(var i = 0; i < 20; i++)
+            if(_highlightCell is not null)
             {
-                for(var j = 0; j < 20; j++)
-                {
-
-                }
+                if (_highlightCell.Unit is null)
+                    CurrentGridState.OnCellDehighlighted(_currentUnit, _highlightCell);
+                else
+                    CurrentGridState.OnUnitDehighlighted(_currentUnit, _highlightCell.Unit);
             }
+
+            _highlightCell = cell;
+            if (_highlightCell.Unit is null)
+                CurrentGridState.OnCellHighlighted(_currentUnit, _highlightCell);
+            else
+                CurrentGridState.OnUnitHighlighted(_currentUnit, _highlightCell.Unit);
+        }
+
+        private void ClickCell(Cell cell)
+        {
+            if (cell.Unit is null)
+            {
+                CurrentGridState.OnCellClicked(_currentUnit, cell);
+            }
+            else
+            {
+                CurrentGridState.OnUnitClicked(_currentUnit, cell.Unit);
+            }
+        }
+
+        public void GenerateCellGrid(int index, LevelData levelData)
+        {
+            if (index != 0)
+                return;
+
+            _tileMap = ResourceLoader.Load<PackedScene>(LevelManager.GetResourcePath(levelData.Map+".tscn")).Instantiate<TileMap>();
+            GetTree().CurrentScene.AddChild(_tileMap);
+            var cellPrefab = ResourceLoader.Load<PackedScene>(Cell.ResourcePath);
+            foreach (var c in _tileMap.GetUsedCells(0))
+            {
+                var cell = cellPrefab.Instantiate<Cell>();
+                _tileMap.AddChild(cell);
+                
+                cell.Name = $"C{c.X}-{c.Y}";
+                cell.Coord = c;
+                cell.Position = _tileMap.MapToLocal(c);
+                
+                RegisterCell(cell);
+            }
+        }
+
+        public void ClearCellGrid()
+        {
+            _tileMap.QueueFree();
+            _currentUnit = null;
         }
     }
 }

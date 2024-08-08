@@ -9,56 +9,36 @@ namespace SrpgFramework.CellGrid.Cells
     public partial class Cell
     {
         #region GUI
-        public Action<Cell> OnCellClicked;
-        public Action<Cell> OnCellHighlighted;
-        public Action<Cell> OnCellDehighlighted;
-        public Action<Unit> OnUnitClicked;
-        public Action<Unit> OnUnitHighlighted;
-        public Action<Unit> OnUnitDeHighlighted;
+        public Action<Cell> OnMouseEnter;
+        public Action<Cell> OnMouseDown;
         public Action<Player> OnTurnStart;
         public Action<Player> OnTurnEnd;
 
-        public virtual void OnMouseEnter()
+        public virtual void MouseEnter()
         {
-            if (Unit is null)
-            {
-                OnCellHighlighted?.Invoke(this);
-            }
-            else
-            {   
-                OnUnitHighlighted?.Invoke(Unit);
-            }
+            OnMouseEnter?.Invoke(this);
         }
-        public virtual void OnMouseExit()
-        {
-            if (Unit is null)
-                OnCellDehighlighted?.Invoke(this);
-            else
-                OnUnitDeHighlighted?.Invoke(Unit);
-        }
-        public virtual void OnMouseDown(Node viewport, InputEvent @event, long shapeIdx)
+
+        public virtual void MouseDown(Node viewport, InputEvent @event, long shapeIdx)
         {
             if((@event as InputEventMouseButton)?.ButtonIndex == MouseButton.Left && @event.IsPressed())
             {
-                if (Unit is null)
-                    OnCellClicked?.Invoke(this);
-                else
-                    OnUnitClicked?.Invoke(Unit);
+                OnMouseDown?.Invoke(this);
             }
         }
         #endregion
 
         #region 高亮        
-        public Action<int,string> OnHighlight;
+        public Action<int> OnHighlight;
 
-        public void Highlight(int index, string highlighterGroup = CellHighlighter.Group_Default)
+        public void Highlight(int index)
         {
-            OnHighlight?.Invoke(index, highlighterGroup);
+            OnHighlight?.Invoke(index);
         }
 
         public void DeHighlight()
         {
-            OnHighlight?.Invoke(CellHighlighter.Tag_DeHighlight, CellHighlighter.Group_Default);
+            OnHighlight?.Invoke(CellHighlighter.Tag_DeHighlight);
         }
         #endregion
     }

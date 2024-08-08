@@ -17,7 +17,7 @@ namespace SrpgFramework.CellGrid.CellGridState
 
         public void Enter(Unit self)
         {
-            moveableArea = AStar.GetMoveableArea(self.Cell, self.Move, self.Mov);
+            moveableArea = AStar.GetMoveableArea(self.Cell, self);
             foreach (var c in moveableArea)
             {
                 c.Highlight(CellHighlighter.Tag_Selectable);
@@ -37,7 +37,7 @@ namespace SrpgFramework.CellGrid.CellGridState
         {
             if (moveableArea.Contains(cell))
             {
-                path = AStar.GetPath(self.Cell, cell, self.Move);
+                path = AStar.GetPath(self.Cell, cell, self);
                 foreach (var c in path)
                     c.Highlight(CellHighlighter.Tag_Effect);
             }

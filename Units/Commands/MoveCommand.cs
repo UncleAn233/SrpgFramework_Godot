@@ -1,28 +1,29 @@
-﻿using Godot;
+﻿using static SrpgFramework.Common.Constatnts;
 using SrpgFramework.CellGrid;
 using SrpgFramework.CellGrid.Cells;
 using SrpgFramework.Global;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace SrpgFramework.Units.Commands
 {
-    public class MoveCommand : Command
+    public partial class MoveCommand : Command
     {
         public Cell Destination { get; set; }   //目的地
         private IList<Cell> path;   //路径
         private HashSet<Cell> moveableArea; //可移动范围
 
-        public override async Task Act(Unit unit)
+        private float MoveAnimationSpeed = 0.5f;
+
+        public override void Act(Unit unit)
         {
-            path = AStar.GetPath(unit.Cell, Destination, unit.Move);
-            await unit.Move.Move(Destination, path);
+            path = AStar.GetPath(unit.Cell, Destination, unit);
+            Move(unit, Destination, path);
         }
 
         public override void Enter(Unit self)
         {
-            moveableArea = AStar.GetMoveableArea(self.Cell, self.Move, self.Mov);
+            moveableArea = AStar.GetMoveableArea(self.Cell, self);
             foreach (var cell in moveableArea)
             {
                 cell.Highlight(CellHighlighter.Tag_Selectable);
@@ -43,7 +44,7 @@ namespace SrpgFramework.Units.Commands
         {
             if (moveableArea.Contains(cell))
             {
-                path = AStar.GetPath(self.Cell, cell, self.Move);
+                path = AStar.GetPath(self.Cell, cell, self);
                 foreach (var c in path)
                 {
                     c.Highlight(CellHighlighter.Tag_Effect);
@@ -97,17 +98,17 @@ namespace SrpgFramework.Units.Commands
                 other.DeHighlight();
         }
 
-        public override bool CanPerform(Unit self)
+        public override bool CanAction(Unit self)
         {
-            return self.Move is not null && self.Move.CanMove();
+            return self.CanMove();
         }
 
         public override bool ShouldExecute(Unit self, Cell cell)
         {
-            if (!CanPerform(self))
+            if (!CanAction(self))
                 return false;
 
-            var top = self.Ai.CellScoreDict.Where(c => self.Move.IsCellMovableTo(c.Key)).OrderByDescending(c => c.Value).First();
+            var top = self.Ai.CellScoreDict.Where(c => self.IsCellMovableTo(c.Key)).OrderByDescending(c => c.Value).First();
             if (top.Value > self.Ai.CellScoreDict[self.Cell])
             {
                 Destination = top.Key;
@@ -118,18 +119,44 @@ namespace SrpgFramework.Units.Commands
 
         public override float Evaluate(Unit self)
         {
-            var totalPath = AStar.GetPath(self.Cell, Destination, self.Move);
+            var totalPath = AStar.GetPath(self.Cell, Destination, self);
             int cost = 0;
             for (var i = 0; i < totalPath.Count; i++)
             {
                 cost += totalPath[i].MoveCost;
-                if (cost <= self.Mov && self.Move.IsCellMovableTo(totalPath[i]))
+                if (cost <= self.Mov && self.IsCellMovableTo(totalPath[i]))
                     Destination = totalPath[i];
                 else
                     break;
             }
 
             return self.Ai.CellScoreDict[Destination];
+        }
+
+        public async void Move(Unit unit, Cell destinition, IList<Cell> path)
+        {
+            unit.MovePoints--;
+            unit.OnMoveStart?.Invoke();
+
+            if (MoveAnimationSpeed > 0)
+            {
+                foreach (var cell in path)
+                {
+                    var destination_pos = cell.Position;
+                    //Face();
+                    while (unit.Position != destination_pos)
+                    {
+                        unit.Position = unit.Position.MoveToward(destination_pos, MoveAnimationSpeed);
+                        await ToSignal(unit.GetTree(), ProcessFrame_Single);
+                    }
+                }
+            }
+            else
+            {
+                unit.Position = destinition.Position;
+            }
+            unit.Cell = destinition;
+            unit.OnMoveEnd?.Invoke();
         }
     }
 }

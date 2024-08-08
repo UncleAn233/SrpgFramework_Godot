@@ -1,17 +1,14 @@
-﻿using Godot;
-using SrpgFramework.Units.Commands;
+﻿using SrpgFramework.Units.Commands;
 using SrpgFramework.CellGrid;
 using SrpgFramework.Level;
 using SrpgFramework.Players;
 using SrpgFramework.Units;
+using SrpgFramework.Common;
 
 namespace SrpgFramework.Global
 {
-	public partial class BattleManager : Node
+	public partial class BattleManager : SingleNode<BattleManager>
 	{
-        private static BattleManager instance;
-        public static BattleManager Instance { get => instance; }
-
         public static LevelManager LevelMgr { get; private set; }
         public static CellGridManager CellGridMgr { get; private set; }
         public static UnitManager UnitMgr { get; private set; }
@@ -21,19 +18,18 @@ namespace SrpgFramework.Global
         // Called when the node enters the scene tree for the first time.
         public override void _Ready()
 		{
-            if(instance is not null)
-            {
-                this.QueueFree();
-                return;
-            }
-
-            instance = this;
+            base._Ready();
 
             this.AddChild(LevelMgr = new LevelManager());
-            this.AddChild(CellGridMgr = new CellGridManager());
-            this.AddChild(UnitMgr = new UnitManager());
-            this.AddChild(CommandMgr = new CommandManager());
+            LevelMgr.Name = nameof(LevelMgr);
             this.AddChild(PlayerMgr = new PlayerManager());
+            PlayerMgr.Name = nameof(PlayerMgr);
+            this.AddChild(CellGridMgr = new CellGridManager());
+            CellGridMgr.Name = nameof(CellGridMgr);
+            this.AddChild(UnitMgr = new UnitManager());
+            UnitMgr.Name = nameof(UnitMgr);
+            this.AddChild(CommandMgr = new CommandManager());
+            CommandMgr.Name = nameof(CommandMgr);
         }
 	}
 }

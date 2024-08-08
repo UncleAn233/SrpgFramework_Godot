@@ -7,7 +7,7 @@ namespace SrpgFramework.CellGrid
 {
     public class AStar
     {
-        public static List<Cell> GetPath(Cell start, Cell end, MoveUnit unit)
+        public static List<Cell> GetPath(Cell start, Cell end, Unit unit)
         {
             Dictionary<Cell, AStarNode> nodeDict = new Dictionary<Cell, AStarNode>() { { start, new AStarNode(0, start.GetDistance(end), null) } };   //记录每个格子的寻路信息
             var open = new HashSet<Cell>() { start };  //候选列表
@@ -62,7 +62,7 @@ namespace SrpgFramework.CellGrid
         /// <summary>
         /// 移动范围，洪水算法
         /// </summary>
-        public static HashSet<Cell> GetMoveableArea(Cell start, MoveUnit unit, int step)
+        public static HashSet<Cell> GetMoveableArea(Cell start, Unit unit)
         {
             HashSet<Cell> open = new(); //待处理
             HashSet<Cell> close = new();    //已处理
@@ -72,6 +72,8 @@ namespace SrpgFramework.CellGrid
             open.Add(start);
             close.Add(start);
 
+            var step = unit.Mov;
+            
             for (var i = 1; i <= step; i++)
             {
                 foreach (var cell in open)
