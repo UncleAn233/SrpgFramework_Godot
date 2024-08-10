@@ -57,6 +57,8 @@ namespace SrpgFramework.Units
             unit.Init(id);
             unit.PlayerNumber = player;
             unit.Cell = BattleManager.CellGridMgr.Cells[cell];
+
+            Units.Add(unit);
         }
 	}
 }

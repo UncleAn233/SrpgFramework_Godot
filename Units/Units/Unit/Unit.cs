@@ -2,7 +2,10 @@
 using SrpgFramework.CellGrid.Cells;
 using SrpgFramework.Global;
 using SrpgFramework.Players;
+using SrpgFramework.Units.Commands;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SrpgFramework.Units
 {
@@ -13,23 +16,23 @@ namespace SrpgFramework.Units
         /// <summary>
         /// 回合开始
         /// </summary>
-        public Action<int> OnTurnStart;
+        public Action<int> TurnStart;
         /// <summary>
         /// 回合结束
         /// </summary>
-        public Action<int> OnTurnEnd;
+        public Action<int> TurnEnd;
         /// <summary>
         /// HP变化
         /// </summary>
-        public Action<int> OnHpUpdate;
+        public Action<int> HpUpdated;
         /// <summary>
         /// MP变化
         /// </summary>
-        public Action<int> OnMpUpdate;
+        public Action<int> MpUpdated;
         /// <summary>
         /// Hp低于0时
         /// </summary>
-        public Action OnDie;
+        public Action Die;
         /// <summary>
         /// 受到伤害前
         /// </summary>
@@ -38,14 +41,15 @@ namespace SrpgFramework.Units
         /// 受到伤害后
         /// </summary>
         public Action AfterDamaged;
+
         /// <summary>
-        /// 移动开始前
+        /// 开始执行指令
         /// </summary>
-        public Action OnMoveStart;
+        public Action<string> StartExecuteCmd;
         /// <summary>
-        /// 移动开始后
+        /// 执行指令结束
         /// </summary>
-        public Action OnMoveEnd;
+        public Action<string> EndExecuteCmd;
 
         /// <summary>
         /// 决定读取的Unit数据
@@ -60,13 +64,13 @@ namespace SrpgFramework.Units
         /// <summary>
         /// 行动点数
         /// </summary>
-        public int ActionPoints { get; set; } = 1;  //行动点数
+        public int ActionPoints { get; set; } = 1;
         public int TotalActionPoints { get; set; } = 1;
         /// <summary>
         /// 移动点数
         /// </summary>
         public int MovePoints { get; set; } = 1;
-        public int TotalMovePoints { get; set; } = 1;   //回合结束时回复至该点数
+        public int TotalMovePoints { get; set; } = 1;
 
         public UnitType UnitType { get; private set; }
 
@@ -86,15 +90,60 @@ namespace SrpgFramework.Units
             }
         }
 
-        public AiUnit Ai { get; internal set; }
+        public bool a;
+        private bool isExecutingCmd;
+        private Command executingCmd { get; set; } //当前正在执行的指令
 
+        public AiUnit Ai { get; internal set; }
+        
         public override void _Ready()
         {
-            OnTurnEnd += (t) =>
+            BattleManager.PlayerMgr.RegisterUnit(this);
+            
+            TurnEnd += (t) =>
             {
                 ActionPoints = TotalActionPoints;
                 MovePoints = TotalMovePoints;
             };
+        }
+
+        public override void _Process(double delta)
+        {
+            if(isExecutingCmd)
+                executingCmd.Process(this, delta);
+        }
+        public override void _PhysicsProcess(double delta)
+        {
+            if (isExecutingCmd)
+                executingCmd.PhysicsProcess(this, delta);
+        }
+
+        /// <summary>
+        /// 执行Cmd
+        /// </summary>
+        /// <param name="command"></param>
+        public void ExecuteCommand(Command command)
+        {
+            if (isExecutingCmd)
+                return;
+
+            command.PreProcess(this);
+            StartExecuteCmd?.Invoke(command.CmdName);
+
+            isExecutingCmd = true;
+            executingCmd = command;
+        }
+
+        /// <summary>
+        /// 结束Cmd
+        /// </summary>
+        public void EndCommand()
+        {
+            executingCmd.PostProcess(this);
+            EndExecuteCmd?.Invoke(executingCmd.CmdName);
+
+            isExecutingCmd = false;
+            executingCmd = null;
         }
 
         /// <summary>
@@ -109,13 +158,13 @@ namespace SrpgFramework.Units
             }
         }
 
-        public void TurnStart(int turn)
+        public void OnTurnStart(int turn)
         {
-            OnTurnStart?.Invoke(turn);
+            TurnStart?.Invoke(turn);
         }
-        public void TurnEnd(int turn)
+        public void OnTurnEnd(int turn)
         {
-            OnTurnEnd?.Invoke(turn);
+            TurnEnd?.Invoke(turn);
         }
 
         #region 移动相关代码
@@ -126,7 +175,7 @@ namespace SrpgFramework.Units
 
         public virtual bool IsCellMovableTo(Cell cell)
         {
-            return cell.IsTaken && (Cell.GroundType & MovableGroundType) > 0;
+            return !cell.IsTaken && (Cell.GroundType & MovableGroundType) > 0;
         }
         public virtual bool IsCellTraversable(Cell cell)
         {

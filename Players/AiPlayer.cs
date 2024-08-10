@@ -8,19 +8,42 @@ namespace SrpgFramework.Players
 {
     public partial class AiPlayer : Player
     {
-        public Action action;
+        public Action PlayEnd;
 
-        public override async void Play()
+        private bool isPlaying;
+
+        private IEnumerator<Unit> unitLine;
+
+        public override void _Ready()
         {
-            if (this.Units.Any())
+            isPlaying = false;
+        }
+
+        public override void Play()
+        {
+            unitLine = SelectUnitFirstByNearEnemy().GetEnumerator();
+            
+            if(unitLine.MoveNext())
             {
-                BattleManager.CellGridMgr.ToBlockInputState();
-                foreach (var unit in SelectNextFirstByNearEnemy())
+                isPlaying = true;
+                unitLine.Current.Ai.StartPlay();
+            }
+        }
+
+        public override void _Process(double delta)
+        {
+            if(isPlaying && !unitLine.Current.Ai.IsAiPlaying)
+            {
+                if(unitLine.MoveNext())
                 {
-                    await unit.Ai?.Execute();
+                    unitLine.Current.Ai.StartPlay();
                 }
-                BattleManager.PlayerMgr.NextPlayer();
-                return;
+                else
+                {
+                    isPlaying = false;
+                    unitLine = null;
+                    BattleManager.PlayerMgr.NextPlayer();
+                }
             }
         }
 
@@ -28,11 +51,12 @@ namespace SrpgFramework.Players
         {
         }
 
-        private IEnumerable<Unit> SelectNextFirstByNearEnemy()
+
+        private IEnumerable<Unit> SelectUnitFirstByNearEnemy()
         {
-            return this.Units.OrderBy(unit =>
+            return this.Units.Where(u => u.Ai is not null).OrderBy(unit =>
             {
-                return BattleManager.UnitMgr.GetEnemyUnits(this).Min(enemy => unit.Cell.GetDistance(enemy.Cell)); //离敌人近的先动
+                return BattleManager.UnitMgr.GetEnemyUnits(this).Min(enemy => unit.Cell.GetDistance(enemy.Cell));
             });
         }
     }

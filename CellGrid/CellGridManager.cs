@@ -78,8 +78,8 @@ namespace SrpgFramework.CellGrid
         {
             if (Cells.TryAdd(cell.Coord, cell))
             {
-                cell.OnMouseEnter += HighlightCell;
-                cell.OnMouseDown += ClickCell;
+                cell.MouseEnter += HighlightCell;
+                cell.MouseDown += ClickCell;
             }
         }
 
@@ -87,8 +87,8 @@ namespace SrpgFramework.CellGrid
         {
             if (Cells.Remove(cell.Coord))
             {
-                cell.OnMouseEnter -= HighlightCell;
-                cell.OnMouseDown -= ClickCell;
+                cell.MouseEnter -= HighlightCell;
+                cell.MouseDown -= ClickCell;
             }
         }
 

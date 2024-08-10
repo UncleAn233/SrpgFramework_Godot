@@ -1,6 +1,5 @@
 ﻿using Godot;
 using SrpgFramework.Players;
-using SrpgFramework.Units;
 using System;
 
 namespace SrpgFramework.CellGrid.Cells
@@ -9,21 +8,21 @@ namespace SrpgFramework.CellGrid.Cells
     public partial class Cell
     {
         #region GUI
-        public Action<Cell> OnMouseEnter;
-        public Action<Cell> OnMouseDown;
-        public Action<Player> OnTurnStart;
-        public Action<Player> OnTurnEnd;
+        public Action<Cell> MouseEnter;
+        public Action<Cell> MouseDown;
+        public Action<Player> TurnStart;
+        public Action<Player> TurnEnd;
 
-        public virtual void MouseEnter()
+        public virtual void OnMouseEnter()
         {
-            OnMouseEnter?.Invoke(this);
+            MouseEnter?.Invoke(this);
         }
 
-        public virtual void MouseDown(Node viewport, InputEvent @event, long shapeIdx)
+        public virtual void OnMouseDown(Node viewport, InputEvent @event, long shapeIdx)
         {
             if((@event as InputEventMouseButton)?.ButtonIndex == MouseButton.Left && @event.IsPressed())
             {
-                OnMouseDown?.Invoke(this);
+                MouseDown?.Invoke(this);
             }
         }
         #endregion

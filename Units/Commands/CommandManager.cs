@@ -8,11 +8,11 @@ namespace SrpgFramework.Units.Commands
 	/// </summary>
 	public partial class CommandManager : Node
 	{
-        private Dictionary<string, Command> skills { get; set; }	//储存获取到的Skill
+        private Dictionary<string, Command> commands { get; set; }	//储存获取到的Command
 
         public override void _Ready()
 		{
-            skills = new();
+            commands = new();
 		}
 
 		public static string GetResourcePath(string cmd)
@@ -20,16 +20,13 @@ namespace SrpgFramework.Units.Commands
 			return $"res://Resources/Commands/{cmd}.tres";
         }
 
-		/// <summary>
-		/// 根据Skill Id获取对应技能
-		/// </summary>
-		public Command GetSkill(string sId)
+		public Command GetCommand(string cmd)
 		{
-			if(!skills.ContainsKey(sId))
+			if(!commands.ContainsKey(cmd))
 			{
-				skills.Add(sId, ResourceLoader.Load<Command>(GetResourcePath(sId)));
+                commands.Add(cmd, ResourceLoader.Load<Command>(GetResourcePath(cmd)));
 			}
-			return skills[sId];
+			return commands[cmd];
 		}
 	}
 }

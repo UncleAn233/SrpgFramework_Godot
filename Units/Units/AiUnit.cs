@@ -5,13 +5,14 @@ using SrpgFramework.CellGrid.Cells;
 using SrpgFramework.Global;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using System;
 
 namespace SrpgFramework.Units
 {
 	public partial class AiUnit : Node
 	{
         private Unit unit;
+
         public Dictionary<Unit, float> UnitScoreDict { get; private set; } = new();
         public Dictionary<Cell, float> CellScoreDict { get; private set; } = new();
 
@@ -21,13 +22,24 @@ namespace SrpgFramework.Units
         public List<Evaluator<Unit>> UnitEvaluators = new();
         public List<Evaluator<Cell>> CellEvaluators = new();
 
+        public bool IsAiPlaying { get; private set; }
+
         // Called when the node enters the scene tree for the first time.
         public override void _Ready()
 		{
 			unit = GetParent<Unit>();
-            unit.Ai = this;
-		}
 
+            unit.Ai = this;
+            unit.EndExecuteCmd += NextCommand;
+
+            MoveBrains.Add(BattleManager.CommandMgr.GetCommand("move"));
+
+            CellEvaluators.Add(ResourceLoader.Load<Evaluator<Cell>>("res://Resources/Evaluators/RandomCell.tres"));
+
+            IsAiPlaying = false;
+        }
+
+        #region Evaluate Code
         //评估
         public void EvaluateUnits()
         {
@@ -52,11 +64,15 @@ namespace SrpgFramework.Units
         {
             if (UnitEvaluators.Any())
             {
-                UnitScoreDict.Add(toEvaluate, UnitEvaluators.Sum(evaluator =>
+                var score = UnitEvaluators.Sum(evaluator =>
                 {
-                    evaluator.PreCalculate(unit);
                     return evaluator.Evaluate(toEvaluate, unit) * evaluator.Weight;
-                }));
+                });
+
+                if (UnitScoreDict.ContainsKey(toEvaluate))
+                    UnitScoreDict[toEvaluate] = score;
+                else
+                    UnitScoreDict.Add(toEvaluate, score);
             }
             else
             {
@@ -68,11 +84,11 @@ namespace SrpgFramework.Units
         {
             if (CellEvaluators.Any())
             {
-                CellScoreDict.Add(toEvaluate, CellEvaluators.Sum(evaluator =>
-                {
-                    evaluator.PreCalculate(unit);
-                    return evaluator.Evaluate(toEvaluate, unit) * evaluator.Weight;
-                }));
+                var score = CellEvaluators.Sum(e => e.Evaluate(toEvaluate, unit) * e.Weight);
+                if (CellScoreDict.ContainsKey(toEvaluate))
+                    CellScoreDict[toEvaluate] = score;
+                else
+                    CellScoreDict.Add(toEvaluate, score);
             }
             else
             {
@@ -91,21 +107,38 @@ namespace SrpgFramework.Units
                 EvaluateCell(cell);
             }
         }
+        #endregion
 
-        //实行
-        public async Task Execute()
+        public void StartPlay()
         {
+            EvaluateCells();
             EvaluateUnits();
-            var brainList = MoveBrains.Concat(ActionBrains);
-            var brains = brainList.Where(brain => brain.ShouldExecute(unit, unit.Cell));
 
-            while (brains.Any())
+            IsAiPlaying = true;
+            NextCommand();
+        }
+
+        private void NextCommand(string cmdName = "")
+        {
+            if (IsAiPlaying)
             {
-                var topBrain = brains.OrderByDescending(brain => brain.Evaluate(unit)).First();
-                await topBrain.AIExecute(unit);
-                brains = brainList.Where(brain => brain.ShouldExecute(unit, unit.Cell));
+                (Command cmd, float value) top = MoveBrains.Where(c => c.ShouldExecute(unit)).
+                    Select(c => (cmd: c, value: c.Evaluate(unit))).OrderByDescending(c => c.value).FirstOrDefault();    //选择一个评分最高的Cmd执行
+
+                if (top.cmd is not null && top.value > 0)   //若无可执行Cmd或Cmd评分<=0则结束Play
+                {
+                    unit.ExecuteCommand(top.cmd);
+                }
+                else
+                {
+                    EndPlay();
+                }
             }
-            await Task.Yield();
+        }
+
+        public void EndPlay()
+        {
+            IsAiPlaying = false;
         }
     }
 }

@@ -1,7 +1,7 @@
-﻿using static SrpgFramework.Common.Constatnts;
-using SrpgFramework.CellGrid;
+﻿using SrpgFramework.CellGrid;
 using SrpgFramework.CellGrid.Cells;
 using SrpgFramework.Global;
+using SrpgFramework.Players;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,16 +9,54 @@ namespace SrpgFramework.Units.Commands
 {
     public partial class MoveCommand : Command
     {
-        public Cell Destination { get; set; }   //目的地
+        public override string CmdName => "Move";
+
+        private Cell destination { get; set; }   //目的地
+
         private IList<Cell> path;   //路径
+        private int currentDes;    //移动时的当前目的地
         private HashSet<Cell> moveableArea; //可移动范围
 
         private float MoveAnimationSpeed = 0.5f;
-
-        public override void Act(Unit unit)
+        
+        public override void PreProcess(Unit self)
         {
-            path = AStar.GetPath(unit.Cell, Destination, unit);
-            Move(unit, Destination, path);
+            self.MovePoints--;
+
+            path = AStar.GetPath(self.Cell, destination, self);
+            currentDes = 0;
+
+            BattleManager.CellGridMgr.ToBlockInputState();
+        }
+
+        public override void PostProcess(Unit self)
+        {
+            self.Cell = destination;
+
+            if(BattleManager.PlayerMgr.CurrentPlayer is HumanPlayer)
+            {
+                BattleManager.CellGridMgr.ToIdleState();
+            }
+            else
+            {
+                self.Ai?.EvaluateNeighborCells();
+            }
+        }
+
+        public override void Process(Unit self, double delta)
+        {
+            if(self.Position != path[currentDes].Position)
+            {
+                self.Position = self.Position.MoveToward(path[currentDes].Position, MoveAnimationSpeed);
+            }
+            else
+            {
+                currentDes++;
+                if(currentDes >= path.Count)
+                {
+                    self.EndCommand();
+                }
+            }
         }
 
         public override void Enter(Unit self)
@@ -37,7 +75,6 @@ namespace SrpgFramework.Units.Commands
                 cell.DeHighlight();
             }
             moveableArea = null;
-            path = null;
         }
 
         public override void OnCellHighlighted(Unit self, Cell cell)
@@ -72,12 +109,12 @@ namespace SrpgFramework.Units.Commands
             }
         }
 
-        public override async void OnCellClicked(Unit self, Cell cell)
+        public override void OnCellClicked(Unit self, Cell cell)
         {
             if (moveableArea.Contains(cell))
             {
-                Destination = cell;
-                await PlayerExecute(self);
+                destination = cell;
+                self.ExecuteCommand(this);
             }
             else
             {
@@ -111,7 +148,7 @@ namespace SrpgFramework.Units.Commands
             var top = self.Ai.CellScoreDict.Where(c => self.IsCellMovableTo(c.Key)).OrderByDescending(c => c.Value).First();
             if (top.Value > self.Ai.CellScoreDict[self.Cell])
             {
-                Destination = top.Key;
+                destination = top.Key;
                 return true;
             }
             return false;
@@ -119,44 +156,18 @@ namespace SrpgFramework.Units.Commands
 
         public override float Evaluate(Unit self)
         {
-            var totalPath = AStar.GetPath(self.Cell, Destination, self);
+            var totalPath = AStar.GetPath(self.Cell, destination, self);
             int cost = 0;
             for (var i = 0; i < totalPath.Count; i++)
             {
                 cost += totalPath[i].MoveCost;
                 if (cost <= self.Mov && self.IsCellMovableTo(totalPath[i]))
-                    Destination = totalPath[i];
+                    destination = totalPath[i];
                 else
                     break;
             }
 
-            return self.Ai.CellScoreDict[Destination];
-        }
-
-        public async void Move(Unit unit, Cell destinition, IList<Cell> path)
-        {
-            unit.MovePoints--;
-            unit.OnMoveStart?.Invoke();
-
-            if (MoveAnimationSpeed > 0)
-            {
-                foreach (var cell in path)
-                {
-                    var destination_pos = cell.Position;
-                    //Face();
-                    while (unit.Position != destination_pos)
-                    {
-                        unit.Position = unit.Position.MoveToward(destination_pos, MoveAnimationSpeed);
-                        await ToSignal(unit.GetTree(), ProcessFrame_Single);
-                    }
-                }
-            }
-            else
-            {
-                unit.Position = destinition.Position;
-            }
-            unit.Cell = destinition;
-            unit.OnMoveEnd?.Invoke();
+            return self.Ai.CellScoreDict[destination];
         }
     }
 }

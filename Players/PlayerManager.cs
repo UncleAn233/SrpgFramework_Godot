@@ -9,10 +9,10 @@ namespace SrpgFramework.Players
 {
 	public partial class PlayerManager : Node
 	{
-        public Action<int> OnPlayerStart;
-        public Action<int> OnPlayerEnd;
-        public Action<int> OnTurnStart;
-        public Action<int> OnTurnEnd;
+        public Action<int> PlayerStart;
+        public Action<int> PlayerEnd;
+        public Action<int> TurnStart;
+        public Action<int> TurnEnd;
 
         public List<Player> Players { get; private set; }
         public Player CurrentPlayer => Players[currentPlayerIndex];
@@ -33,6 +33,13 @@ namespace SrpgFramework.Players
             GeneratePlayers();
         }
 
+        public override void _UnhandledInput(InputEvent @event)
+        {
+            if (@event is InputEventKey eventKey && !eventKey.Pressed && eventKey.Keycode == Key.M)
+            {
+                NextPlayer();
+            }
+        }
 
         public Player GetPlayer(int num)
         {
@@ -43,12 +50,16 @@ namespace SrpgFramework.Players
             return Players[num];
         }
 
+        /// <summary>
+        /// 下一个Player行动 如果已没有Player 下一回合
+        /// </summary>
+        /// <returns></returns>
         public Player NextPlayer()
         {
             BattleManager.CellGridMgr.ToBlockInputState();
-            OnPlayerEnd(currentPlayerIndex);
+            PlayerEnd?.Invoke(currentPlayerIndex);
 
-            var next = Players.First(p => p.PlayerNumber > currentPlayerIndex && p.HasUnit());
+            var next = Players.FirstOrDefault(p => p.PlayerNumber > currentPlayerIndex && p.HasUnit());
             if (next is null)
             {
                 currentPlayerIndex = 0;
@@ -58,18 +69,22 @@ namespace SrpgFramework.Players
             {
                 currentPlayerIndex = next.PlayerNumber;
             }
-            OnPlayerStart(currentPlayerIndex);
+            GD.Print($"{currentPlayerIndex} Player");
+            PlayerStart?.Invoke(currentPlayerIndex);
             CurrentPlayer.Play();
             return CurrentPlayer;
         }
 
+        /// <summary>
+        /// 下一回合
+        /// </summary>
         public void NextTurn()
         {
-            OnTurnEnd?.Invoke(CurrentTurn);
+            TurnEnd?.Invoke(CurrentTurn);
             CurrentTurn++;
             if (CurrentTurn <= MaxTurn)
             {
-                OnTurnStart?.Invoke(CurrentTurn);
+                TurnStart?.Invoke(CurrentTurn);
             }
             else
             {
@@ -77,6 +92,9 @@ namespace SrpgFramework.Players
             }
         }
 
+        /// <summary>
+        /// 生成Player
+        /// </summary>
         public void GeneratePlayers()
         {
             Players.Clear();
@@ -85,6 +103,7 @@ namespace SrpgFramework.Players
                 Players.Add(player);
                 player.PlayerNumber = num;
                 player.Alignment = alignment;
+                this.AddChild(player);
             };
             regist(new HumanPlayer(), 0, PlayerAlignment.Friend);   //玩家
             regist(new AiPlayer(), 1, PlayerAlignment.Friend);   //友军
@@ -95,14 +114,14 @@ namespace SrpgFramework.Players
 
         public void RegisterUnit(Unit unit)
         {
-            OnTurnStart += unit.TurnStart;
-            OnTurnEnd += unit.TurnEnd;
+            TurnStart += unit.OnTurnStart;
+            TurnEnd += unit.OnTurnEnd;
         }
 
         public void UnRegisterUnit(Unit unit)
         {
-            OnTurnStart -= unit.TurnStart;
-            OnTurnEnd -= unit.TurnEnd;
+            TurnStart -= unit.OnTurnStart;
+            TurnEnd -= unit.OnTurnEnd;
         }
 
         void GameStart()

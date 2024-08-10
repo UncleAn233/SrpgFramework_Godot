@@ -69,8 +69,8 @@ namespace SrpgFramework.CellGrid.Cells
         public override void _Ready()
         {
             var area = this.GetNode<Area2D>("Area2D");
-            area.MouseEntered += MouseEnter;
-            area.InputEvent += MouseDown;
+            area.MouseEntered += OnMouseEnter;
+            area.InputEvent += OnMouseDown;
         }
 
         /// <summary>

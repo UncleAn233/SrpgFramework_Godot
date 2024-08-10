@@ -1,6 +1,6 @@
 ﻿using SrpgFramework.CellGrid.Cells;
+using SrpgFramework.Global;
 using SrpgFramework.Units;
-using SrpgFramework.Units.Commands;
 
 namespace SrpgFramework.CellGrid.CellGridState
 {
@@ -8,7 +8,6 @@ namespace SrpgFramework.CellGrid.CellGridState
     {
         private CellGridManager _mgr;
 
-        private MoveCommand move = new();
         public GridStateIdle(CellGridManager mgr)
         {
             this._mgr = mgr;
@@ -26,7 +25,7 @@ namespace SrpgFramework.CellGrid.CellGridState
         public void OnUnitClicked(Unit self, Unit unit)
         {
             //_mgr.ToState(_mgr.SelectUnitState, unit);
-            _mgr.ToState(move, unit);
+            _mgr.ToState(BattleManager.CommandMgr.GetCommand("move"), unit);
         }
 
         public void OnUnitHighlighted(Unit self, Unit unit)

@@ -18,9 +18,9 @@ namespace SrpgFramework.Units
             set
             {
                 hp = value;
-                OnHpUpdate?.Invoke(hp);
+                HpUpdated?.Invoke(hp);
                 if (hp < 1)
-                    this.OnDie?.Invoke();
+                    this.Die?.Invoke();
             }
         }
 
